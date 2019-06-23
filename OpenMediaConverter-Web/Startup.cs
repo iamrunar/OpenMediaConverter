@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenMediaConverterWeb.ApplicationCore;
+using OpenMediaConverterWeb;
+using OpenMediaConverterWeb.Hubs;
 
 namespace OpenMediaConverter_Web
 {
@@ -32,10 +34,13 @@ namespace OpenMediaConverter_Web
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
+            services.AddHangfire(x => x.UseSqlServerStorage(Configuration.GetConnectionString("HangfireConnection")));
+            services.AddHangfireServer();
+
             services.Configure<ConvertSettings>(Configuration);
 
-
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddSignalR();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -51,6 +56,8 @@ namespace OpenMediaConverter_Web
                 app.UseHsts();
             }
 
+            app.UseHangfireDashboard();
+
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
@@ -59,7 +66,11 @@ namespace OpenMediaConverter_Web
             {
                 routes.MapRoute(
                     name: "default",
-                    template: "{controller=Home}/{action=Index}/{id?}");
+                    template: "{controller=Home}/{action=Index}/{file?}");
+            });
+            app.UseSignalR(routes =>
+            {
+                routes.MapHub<ConvertFileHub>("/converFile");
             });
         }
     }
