@@ -23,5 +23,5 @@ namespace FFMpegWrapper
         public TimeSpan AboutTotal { get; }
     }
 
-
+    public delegate void ProgressDelegate(MediaConverterProgressEventArgs eventArgs);
 }

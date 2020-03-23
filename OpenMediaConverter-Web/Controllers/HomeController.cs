@@ -108,23 +108,8 @@ namespace OpenMediaConverter_Web.Controllers
                 var outputFile = Path.Combine(UploadPath, fileName);
                 var ffmpegPath = _convertSettings.Value.FFmpegPath;
                 var mediaConverter = new MediaConverter(ffmpegPath);
-                mediaConverter.Progress += async(s, e) =>
-                  {
-                      await hubContext.Clients.All
-                        .ReceiveConvertProgress((float)(e.Duration.TotalMilliseconds/e.AboutTotal.TotalMilliseconds), string.Empty);
-                  };
-                await mediaConverter.ConvertAsync(sourceFilePath, outputFile, CancellationToken.None);
+                await mediaConverter.ConvertAsync(sourceFilePath, outputFile, new ConvertProgress(hubContext), CancellationToken.None);
 
-                //for (int i = 0; i < 100; i++)
-                //{
-                //    float progressValue = i ;
-                //    string message = "mes";
-
-                //    await hubContext.Clients.All
-                //        .ReceiveConvertProgress(progressValue, message);
-                //    await Task.Delay(50);
-
-                //}
                 var outputPath = $"?file={fileName}";
                 await hubContext.Clients.All.ReceiveConvertComplete(outputPath);
             }
@@ -134,6 +119,22 @@ namespace OpenMediaConverter_Web.Controllers
             }
 
             System.IO.File.Delete(sourceFilePath);
+        }
+
+        class ConvertProgress : IProgress<MediaConverterProgressEventArgs>
+        {
+            private readonly IHubContext<ConvertFileHub, IConvertFileHub> hubContext;
+
+            public ConvertProgress(IHubContext<ConvertFileHub, IConvertFileHub> hubContext)
+            {
+                this.hubContext = hubContext;
+            }
+
+            public async void Report(MediaConverterProgressEventArgs e)
+            {
+                await hubContext.Clients.All
+                  .ReceiveConvertProgress((float)(e.Duration.TotalMilliseconds / e.AboutTotal.TotalMilliseconds), string.Empty);
+            }
         }
     }
 }

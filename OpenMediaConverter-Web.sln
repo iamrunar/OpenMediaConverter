@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Root", "Root", "{9B28DA17-3
 		LICENSE = LICENSE
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoConverter", "VideoConverter\VideoConverter.csproj", "{39D36522-78B2-4092-8BE5-6C78BFAF2A20}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,5 +33,9 @@ Global
 		{C0DDF02D-7646-4A01-A73A-EAD10B88EF4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0DDF02D-7646-4A01-A73A-EAD10B88EF4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0DDF02D-7646-4A01-A73A-EAD10B88EF4C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39D36522-78B2-4092-8BE5-6C78BFAF2A20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39D36522-78B2-4092-8BE5-6C78BFAF2A20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39D36522-78B2-4092-8BE5-6C78BFAF2A20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39D36522-78B2-4092-8BE5-6C78BFAF2A20}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

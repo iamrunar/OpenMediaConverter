@@ -21,15 +21,9 @@ namespace FFmpegConverter_Console
                         string d = Path.GetDirectoryName(typeof(MediaConverter).Assembly.Location);
                         var mmpegLocation = Path.Combine(d, "ffmpeg"); 
                         var mediaConverter = new MediaConverter(mmpegLocation);
-                        mediaConverter.Progress += (sender, e) =>
-                        {
-                            Console.WriteLine(
-                                $"{e.Duration} from {e.AboutTotal}. " +
-                                $"Percent = {(e.Duration.TotalMilliseconds / e.AboutTotal.TotalMilliseconds) * 100:F}");
-                        };
                         string sourceFilePath = Path.Combine(d, "source.webm");
                         string destinationFilePath = Path.Combine(d, "dest.mp4");
-                        await mediaConverter.ConvertAsync(sourceFilePath, destinationFilePath, CancellationToken.None);
+                        await mediaConverter.ConvertAsync(sourceFilePath, destinationFilePath, new ConvertProgress(), CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
@@ -41,6 +35,16 @@ namespace FFmpegConverter_Console
             catch (Exception ex)
             {
                 Console.WriteLine($"Process error {ex}");
+            }
+        }
+
+        class ConvertProgress : IProgress<MediaConverterProgressEventArgs>
+        {
+            public async void Report(MediaConverterProgressEventArgs e)
+            {
+                Console.WriteLine(
+                    $"{e.Duration} from {e.AboutTotal}. " +
+                    $"Percent = {(e.Duration.TotalMilliseconds / e.AboutTotal.TotalMilliseconds) * 100:F}");
             }
         }
     }

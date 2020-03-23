@@ -14,13 +14,15 @@ namespace FFMpegWrapper
     public class MediaConverter
     {
         private const string ffmpeg4Progress = @"frame=\s*(?'frame'\d+).*?time=(?'time'[\d\:\.]+)\sbitrate=\s*(?'bitrate'[\d\.]+)(?'bitrateType'[\w\/]+)";
-        private const string ffmpeg4VideoDuration = @"Stream.*?Video.*?Metadata:.*?DURATION\s*:\s*(?'duration'[\d:\.]+)";
-        private const string ffmpeg4AudioDuration = @"Stream.*?Audio.*?Metadata:.*?DURATION\s*:\s*(?'duration'[\d:\.]+)";
+        private const string ffmpeg4VideoDuration = @"DURATION\s*:\s*(?'duration'[\d:\.]+).*?Video";
+        private const string ffmpeg4AudioDuration = @"DURATION\s*:\s*(?'duration'[\d:\.]+).*?Audio";
 
         private readonly string _mmpegLocation;
 
         public MediaConverter(string mmpegLocation)
         {
+            //todo: check mmpeg location
+
             if (string.IsNullOrEmpty(mmpegLocation))
             {
                 throw new ArgumentException("message", nameof(mmpegLocation));
@@ -36,13 +38,7 @@ namespace FFMpegWrapper
 
         }
 
-        public event EventHandler<MediaConverterProgressEventArgs> Progress;
-
-        public event EventHandler<MediaConverterOutputEventArgs> DataOutput;
-
-        public event EventHandler<MediaConverterErrorEventArgs> Error;
-
-        public Task ConvertAsync(string sourceFilePath, string destinationFilePath, CancellationToken cancellaionToken)
+        public Task ConvertAsync(string sourceFilePath, string destinationFilePath, IProgress<MediaConverterProgressEventArgs> progress, CancellationToken cancellaionToken)
         {
             if (string.IsNullOrEmpty(sourceFilePath))
             {
@@ -55,37 +51,12 @@ namespace FFMpegWrapper
             }
 
             return Task.Factory.StartNew(() =>
-{
-    string d = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-    try
-    {
-        var total = GetDuration(sourceFilePath);
-        Process(sourceFilePath, destinationFilePath, total);
-    }
-    catch (Exception e)
-    {
-        throw;
-    }
-
-}, cancellaionToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+            {
+                Process(sourceFilePath, destinationFilePath, GetDuration(sourceFilePath), progress);
+            }, cancellaionToken, TaskCreationOptions.LongRunning | TaskCreationOptions.AttachedToParent, TaskScheduler.Current);
         }
 
-        protected virtual void OnProgress(MediaConverterProgressEventArgs e)
-        {
-            Progress?.Invoke(this, e);
-        }
-
-        protected virtual void OnDataOutput(global::FFMpegWrapper.MediaConverterOutputEventArgs e)
-        {
-            DataOutput?.Invoke(this, e);
-        }
-
-        protected virtual void OnError(global::FFMpegWrapper.MediaConverterErrorEventArgs e)
-        {
-            Error?.Invoke(this, e);
-        }
-
-        private void Process(string sourceFilePath, string destinationFilePath, TimeSpan total)
+        private void Process(string sourceFilePath, string destinationFilePath, TimeSpan total, IProgress<MediaConverterProgressEventArgs> progress)
         {
             if (string.IsNullOrEmpty(sourceFilePath))
             {
@@ -108,10 +79,6 @@ namespace FFMpegWrapper
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.RedirectStandardOutput = true;
                 process.StartInfo.RedirectStandardError = true;
-                process.OutputDataReceived += (object sender, DataReceivedEventArgs e) =>
-                {
-                    OnDataOutput(new MediaConverterOutputEventArgs(e.Data));
-                };
 
                 process.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
                 {
@@ -125,15 +92,14 @@ namespace FFMpegWrapper
                         bool isProgress = ExtractProgress(ffmpegProgressRegex, e.Data, out TimeSpan duration);
                         if (isProgress)
                         {
-                            OnProgress(new MediaConverterProgressEventArgs(duration, total));
+                            progress?.Report(new MediaConverterProgressEventArgs(duration, total));
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        OnError(new MediaConverterErrorEventArgs(ex));
+                        process.Close();
+                        throw ;
                     }
-
-                    OnDataOutput(new MediaConverterOutputEventArgs(e.Data));
                 };
                 process.Start();
                 process.BeginOutputReadLine();
@@ -148,7 +114,7 @@ namespace FFMpegWrapper
             using (var process = new Process())
             {
                 process.StartInfo.FileName = _mmpegLocation;
-                process.StartInfo.Arguments = $"-i {sourceFilePath} -c copy -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a";
+                process.StartInfo.Arguments = $"-i \"{sourceFilePath}\" -c copy -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a";
 
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.RedirectStandardOutput = true;
@@ -164,7 +130,7 @@ namespace FFMpegWrapper
                 var ffmpegAudioDuration = new Regex(ffmpeg4AudioDuration, RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 var audios = ffmpegAudioDuration.Matches(outputText);
 
-                if (videos.Count == 0 || audios.Count == 0)
+                if (videos.Count == 0 && audios.Count == 0)
                 {
                     throw new InvalidOperationException("Duration not found.");
                 }
